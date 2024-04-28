@@ -1,0 +1,46 @@
+name: GIT Checkout
+author: Florian Wagner <florian@wagner-flo.de>
+
+inputs:
+  path:
+    description: Relative path under $GITHUB_WORKSPACE to place the repository
+    required: false
+
+  ref:
+    description: Ref to checkout (SHA, branch, tag)
+    required: false
+    default: ${{ github.ref }}
+
+  repository:
+    description: Repository name
+    required: false
+    default: ${{ github.repository }}
+
+  token:
+    description: Personal access token (PAT) used to fetch the repository.
+    default: ${{ github.token }}
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        REPO_PATH=$(readlink -f "$GITHUB_WORKSPACE/${{ inputs.path }}")
+        REMOTE_REF='${{ inputs.ref }}'
+        REMOTE_REF=${REMOTE_REF/refs\//refs\/remotes\/}
+        /bin/echo -e '::group::\x1b[32mCloning repository...\x1b[0m'
+        git clone --progress --no-checkout --filter=tree:0 \
+          "https://x-access-token:${{ inputs.token }}@github.com/${{ inputs.repository }}" \
+          "$REPO_PATH"
+        git config --global --add safe.directory "$REPO_PATH"
+        git -C "$REPO_PATH" config --add gc.auto 0
+        echo '::endgroup::'
+        /bin/echo -e '::group::\x1b[32mFetching repository refs...\x1b[0m'
+        git -C "$REPO_PATH" fetch \
+          --prune --progress --filter=tree:0 origin \
+          '+refs/heads/*:refs/remotes/origin/*' \
+          "+${{ inputs.ref }}:$REMOTE_REF"
+        echo "::endgroup::"
+        /bin/echo -e '::group::\x1b[32mChecking out repository...\x1b[0m'
+        git -C "$REPO_PATH" checkout --progress --force "$REMOTE_REF"
+        echo "::endgroup::"
