@@ -23,11 +23,10 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - shell: bash
+    - shell: sh
       run: |
         REPO_PATH=$(readlink -f "$GITHUB_WORKSPACE/${{ inputs.path }}")
-        REMOTE_REF='${{ inputs.ref }}'
-        REMOTE_REF=${REMOTE_REF/refs\//refs\/remotes\/}
+        REMOTE_REF=$(printf '${{ inputs.ref }}' | sed 's@refs/@refs/remotes/@')
         /bin/echo -e '::group::\x1b[32mCloning repository...\x1b[0m'
         git clone --progress --no-checkout --filter=tree:0 \
           "https://x-access-token:${{ inputs.token }}@github.com/${{ inputs.repository }}" \
